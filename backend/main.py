@@ -46,6 +46,20 @@ DISCLAIMER = (
 )
 
 
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    return value
+
+
 def _artifacts_ready():
     return os.path.exists(os.path.join(MODEL_DIR, "xgb_model.json"))
 
@@ -186,7 +200,7 @@ def predict(req: PredictRequest):
 
     patient_info = {k: v for k, v in row_df.iloc[0].to_dict().items()}
 
-    return {
+    return _json_safe({
         "disclaimer": DISCLAIMER,
         "patient_info": patient_info,
         "top_predictions": top_predictions,
@@ -197,7 +211,7 @@ def predict(req: PredictRequest):
         "cluster": cluster_info,
         "matched_association_rules": rule_matches,
         "convergence_score": conv,
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 """
-Ollama (qwen3:8b) integration.
+Ollama (qwen2.5:7b) integration.
 
-Qwen3 is used ONLY for two things:
+Qwen2.5 is used ONLY for two things:
   1. Extracting structured info (symptoms/duration/measurements/context) from
      the user's free-text description.
   2. Producing a plain-language EXPLANATION of the already-computed ML result.
@@ -16,7 +16,7 @@ import re
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen3:8b"
+MODEL_NAME = "qwen2.5:7b"
 
 KNOWN_SYMPTOMS = [
     "fever", "cough", "fatigue", "headache", "shortness_of_breath",
@@ -40,12 +40,12 @@ def _call_ollama(prompt: str, timeout=60) -> str:
 
 
 def _strip_think(text: str) -> str:
-    """Remove <think>...</think> reasoning blocks some Qwen3 builds emit."""
+    """Remove <think>...</think> reasoning blocks some Qwen builds emit."""
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
 def extract_from_text(description: str) -> dict:
-    """Ask Qwen3 to extract structured facts from free text ONLY — no diagnosis."""
+    """Ask Qwen2.5 to extract structured facts from free text ONLY — no diagnosis."""
     prompt = f"""You are a text-extraction assistant. You must ONLY extract information
 that is explicitly present in the patient's description below. Do NOT diagnose,
 do NOT guess a disease, do NOT invent numbers that are not stated.
@@ -68,14 +68,14 @@ JSON:"""
     raw = _strip_think(_call_ollama(prompt))
     try:
         match = re.search(r"\{.*\}", raw, re.DOTALL)
-        return json.loads(match.group(0)) if match else {"error": "Could not parse Qwen3 output", "raw": raw}
+        return json.loads(match.group(0)) if match else {"error": "Could not parse Qwen2.5 output", "raw": raw}
     except Exception:
-        return {"error": "Could not parse Qwen3 output", "raw": raw}
+        return {"error": "Could not parse Qwen2.5 output", "raw": raw}
 
 
 def explain_result(patient_summary: dict, top_predictions: list, shap_summary: dict,
                     extracted_text_info: dict, contradictions: list) -> str:
-    """Ask Qwen3 to explain an ALREADY-COMPUTED result in plain language."""
+    """Ask Qwen2.5 to explain an ALREADY-COMPUTED result in plain language."""
     prompt = f"""You are a medical-explanation assistant. The disease predictions below
 were already computed by an XGBoost machine learning model — you must NOT change,
 second-guess, or generate any new probabilities or diagnoses. Your only job is to
@@ -102,7 +102,7 @@ Write a concise (150-220 word) plain-language explanation now:"""
 
 
 def cross_modal_consistency_check(csv_row: dict, extracted_info: dict) -> list:
-    """Compare CSV symptom values against Qwen3-extracted text values."""
+    """Compare CSV symptom values against Qwen2.5-extracted text values."""
     contradictions = []
     text_symptoms = extracted_info.get("symptoms_mentioned", {}) if isinstance(extracted_info, dict) else {}
     for symptom, text_val in text_symptoms.items():
