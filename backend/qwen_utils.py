@@ -16,6 +16,7 @@ import re
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 MODEL_NAME = "qwen2.5:7b"
 
 KNOWN_SYMPTOMS = [
@@ -37,6 +38,35 @@ def _call_ollama(prompt: str, timeout=60) -> str:
         return resp.json().get("response", "").strip()
     except Exception as e:
         return json.dumps({"error": f"Ollama unavailable: {e}"})
+
+
+def get_ollama_status() -> dict:
+    """Return the detected local Ollama availability for the UI and backend health checks."""
+    try:
+        resp = requests.get(OLLAMA_TAGS_URL, timeout=5)
+        resp.raise_for_status()
+        payload = resp.json() if hasattr(resp, "json") else {}
+        models = payload.get("models", []) if isinstance(payload, dict) else []
+        model_names = []
+        for item in models:
+            if isinstance(item, dict):
+                name = item.get("name") or item.get("model")
+                if name:
+                    model_names.append(name)
+        model_present = any(name == MODEL_NAME for name in model_names)
+        return {
+            "status": "online" if resp.ok else "offline",
+            "available": resp.ok,
+            "model_present": model_present,
+            "model_name": MODEL_NAME,
+        }
+    except Exception:
+        return {
+            "status": "offline",
+            "available": False,
+            "model_present": False,
+            "model_name": MODEL_NAME,
+        }
 
 
 def _strip_think(text: str) -> str:

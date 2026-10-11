@@ -98,5 +98,13 @@ export async function getMetrics(): Promise<MetricsResponse> {
 
 export async function getHealth() {
   const res = await fetch(`${BASE_URL}/api/health`);
-  return handle<{ status: string; model_trained: boolean; disclaimer: string }>(res);
+  return handle<{
+    status: string;
+    model_trained: boolean;
+    ollama_status: "online" | "offline";
+    ollama_available: boolean;
+    ollama_model_present: boolean;
+    model_name: string;
+    disclaimer: string;
+  }>(res);
 }

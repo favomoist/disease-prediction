@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/pages/datasetpage.tsx","./src/pages/modelperformancepage.tsx","./src/pages/patternanalysispage.tsx","./src/pages/predictionpage.tsx","./src/pages/resultspage.tsx","./src/services/api.ts","./src/state/appstate.tsx"],"version":"5.9.3"}

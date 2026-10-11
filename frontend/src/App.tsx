@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, NavLink } from "react-router-dom";
 import { AppStateProvider } from "./state/AppState";
 import PredictionPage from "./pages/PredictionPage";
@@ -5,6 +6,7 @@ import DatasetPage from "./pages/DatasetPage";
 import ResultsPage from "./pages/ResultsPage";
 import PatternAnalysisPage from "./pages/PatternAnalysisPage";
 import ModelPerformancePage from "./pages/ModelPerformancePage";
+import { getHealth } from "./services/api";
 
 const links = [
   { to: "/", label: "Prediction" },
@@ -15,12 +17,40 @@ const links = [
 ];
 
 export default function App() {
+  const [ollamaStatus, setOllamaStatus] = useState<"online" | "offline">("offline");
+
+  useEffect(() => {
+    let active = true;
+
+    getHealth()
+      .then((health) => {
+        if (!active) return;
+        setOllamaStatus(health.ollama_status === "online" ? "online" : "offline");
+      })
+      .catch(() => {
+        if (active) setOllamaStatus("offline");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isOnline = ollamaStatus === "online";
+
   return (
     <AppStateProvider>
       <HashRouter>
         <div className="app-shell">
           <aside className="sidebar">
-            <h1>AI Disease Prediction</h1>
+            <div className="sidebar-header">
+              <h1>AI Disease Prediction</h1>
+              <div className={`agent-status ${isOnline ? "online" : "offline"}`} aria-label={isOnline ? "Ollama connected" : "Ollama offline"}>
+                <span className="agent-dot" />
+                <span>Ollama</span>
+                <span className="agent-state">{isOnline ? "Connected" : "Offline"}</span>
+              </div>
+            </div>
             <nav>
               {links.map((l) => (
                 <NavLink key={l.to} to={l.to} end={l.to === "/"} className={({ isActive }) => (isActive ? "active" : "")}>

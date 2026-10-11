@@ -1,198 +1,192 @@
 # AI Disease Prediction — Local Research Demo
 
-A fully local, offline AI disease-prediction web app: React + TypeScript + Vite
-frontend, FastAPI + XGBoost + SHAP + K-Means + Apriori backend, and a local
-Ollama `qwen3:8b` model used **only** to extract information from free text and
-explain already-computed ML results (it never predicts diseases itself).
+A fully local, offline AI disease-prediction web app built with React + TypeScript + Vite on the frontend and FastAPI + XGBoost + SHAP + K-Means + Apriori on the backend. The app uses a local Ollama model, currently qwen2.5:7b, only for:
 
-> **Disclaimer:** This is a research/education project. All outputs are
-> statistical machine-learning results, not medical diagnoses or treatment
-> advice. Always consult a licensed clinician.
+- extracting structured facts from a free-text symptom description
+- explaining the already-computed ML result in plain language
+
+It does not use Ollama to predict the disease itself.
+
+> Disclaimer: This is a research and education project. Outputs are statistical ML results, not medical diagnoses or treatment recommendations. Always consult a licensed clinician.
 
 ---
 
-## 1. Prerequisites (macOS)
+## 1. Prerequisites
 
-- Python 3.10+ (`python3 --version`)
-- Node.js 18+ and npm (`node --version`)
-- [Ollama](https://ollama.com) installed
-- VS Code (optional, recommended)
+- Python 3.10+ (python --version)
+- Node.js 18+ and npm (
+ode --version)
+- [Ollama](https://ollama.com) installed and running locally
+- VS Code is optional but recommended
 
-## 2. Install Ollama and pull the model
+## 2. Install and start Ollama
 
-```bash
-brew install ollama
-ollama serve &          # starts the local Ollama server on :11434
+On Windows PowerShell:
+
+`powershell
+# install Ollama from the official site, then start the server
+ollama serve
+`
+
+Then pull the model used by this app:
+
+`powershell
 ollama pull qwen2.5:7b
-```
+`
+
+The backend checks http://localhost:11434/api/tags to confirm Ollama is available, and the UI shows the status badge based on that real health check.
 
 ## 3. Backend setup
 
-```bash
-cd disease-prediction/backend
+`powershell
+cd c:\Main\proj\disease-prediction\backend
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
+`
 
-## 4. Generate the dataset (already included, but you can regenerate)
+## 4. Generate the dataset
 
-```bash
-cd ../data
+`powershell
+cd ..\data
 python generate_dataset.py --rows 5200 --out patients.csv
-```
+`
 
-This creates `patients.csv` (5,200 labeled patients, 11 disease classes) and
-`patients_example.csv` (20 unlabeled rows for testing the upload/prediction
-flow).
+This creates:
 
-## 5. Train the model
+- patients.csv — labeled training data
+- patients_example.csv — unlabeled sample data for uploading and testing
 
-```bash
-cd ../backend
-python train.py --csv ../data/patients.csv
-```
+## 5. Train the ML model
 
-This detects column types automatically, preprocesses the data, trains an
-XGBoost classifier, computes accuracy/precision/recall/F1/ROC-AUC/confusion
-matrix, fits K-Means clusters and Apriori association rules, and saves
-everything to `../models/`.
+`powershell
+cd ..\backend
+python train.py --csv ..\data\patients.csv
+`
+
+This trains the XGBoost classifier, runs preprocessing, computes metrics, fits the K-Means cluster model, mines association rules, and saves the artifacts to ../models/.
 
 ## 6. Start the backend API
 
-```bash
+`powershell
+cd c:\Main\proj\disease-prediction\backend
+.\.venv\Scripts\Activate.ps1
 uvicorn main:app --reload --port 8000
-```
+`
 
-Health check: `curl http://localhost:8000/api/health`
+Health check:
+
+`powershell
+curl http://localhost:8000/api/health
+`
+
+The response includes:
+
+- status
+- model_trained
+- ollama_status
+- ollama_available
+- ollama_model_present
 
 ## 7. Start the frontend
 
-In a new terminal:
+In a second terminal:
 
-```bash
-cd disease-prediction/frontend
+`powershell
+cd c:\Main\proj\disease-prediction\frontend
 npm install
 npm run dev
-```
+`
 
-Open `http://localhost:5173`.
+Open:
 
-## 8. Try it out
+`	ext
+http://localhost:5173
+`
 
-1. **Prediction page** — upload `data/patients_example.csv` (or your own CSV
-   in the same format), pick a row index, optionally describe symptoms in
-   free text, and click "Run Prediction".
-2. **Dataset page** — see row/column counts and detected column types
-   (identification / binary symptoms / categorical / numerical).
-3. **Results page** — patient info, top-3 predicted diseases with genuine
-   XGBoost probabilities, SHAP positive/negative contributors and chart,
-   CSV-vs-description contradictions, Qwen3's plain-language explanation,
-   assigned cluster, matched association rules, and the Clinical Pattern
-   Convergence Score with its components.
-4. **Pattern Analysis page** — all K-Means clusters and Apriori rules
-   discovered across the training dataset.
-5. **Model Performance page** — accuracy/precision/recall/F1/ROC-AUC,
-   per-class report, and confusion matrix.
+## 8. How the app works
+
+### Prediction page
+
+- upload a CSV file such as data/patients_example.csv
+- select a patient row
+- optionally enter a free-text symptom description
+- run prediction
+
+### Results page
+
+Shows:
+
+- patient info
+- top 3 predictions with XGBoost probabilities
+- SHAP positive and negative contributors
+- extracted text facts from Ollama
+- contradictions between CSV data and text input
+- plain-language explanation from Ollama
+- cluster assignment and matched association rules
+- convergence score with component breakdown
+
+### Pattern Analysis page
+
+Displays discovered cluster summaries and association rules across the dataset.
+
+### Model Performance page
+
+Shows metrics such as accuracy, macro precision, recall, F1, ROC-AUC, confusion matrix, and per-class report.
 
 ---
 
 ## Architecture
 
-```
+`	ext
 disease-prediction/
 ├── data/
-│   ├── generate_dataset.py     # synthetic dataset generator
-│   ├── patients.csv            # 5,200-row labeled training set
-│   └── patients_example.csv    # 20-row unlabeled upload sample
+│   ├── generate_dataset.py
+│   ├── patients.csv
+│   └── patients_example.csv
 ├── backend/
-│   ├── main.py                 # FastAPI app + all endpoints
-│   ├── train.py                # training pipeline
-│   ├── ml_utils.py             # shared preprocessing/SHAP/clustering/apriori/score
-│   ├── qwen_utils.py           # Ollama qwen3:8b integration + consistency check
+│   ├── main.py
+│   ├── ml_utils.py
+│   ├── qwen_utils.py
+│   ├── train.py
 │   └── requirements.txt
-├── models/                     # generated by train.py (gitignored)
-└── frontend/
-    ├── src/
-    │   ├── pages/               # Prediction, Dataset, Results, PatternAnalysis, ModelPerformance
-    │   ├── services/api.ts      # typed fetch wrappers for the backend
-    │   └── state/AppState.tsx   # shared React context (dataset/result)
-    └── package.json
-```
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tsconfig.json
+├── models/
+│   └── generated by train.py
+└── README.md
+`
 
-### CSV format
+## ML pipeline
 
-Any CSV with:
-- one or two identification columns (name containing `id`/`name`) — excluded
-  from ML features automatically,
-- binary symptom columns with values `0`/`1`,
-- a categorical column such as `gender`,
-- numerical vitals/labs (age, blood pressure, heart rate, temperature,
-  respiratory rate, SpO2, glucose, cholesterol, BMI, etc.),
-- for **training only**, a `disease` label column.
+- preprocessing and feature engineering
+- XGBoost multiclass classification
+- SHAP feature explanations
+- K-Means clustering
+- Apriori rule mining
+- local Ollama support for text extraction and explanation only
 
-Column types are detected automatically at both training and upload time —
-you don't need to configure anything.
+## Qwen/Ollama role
 
-### ML pipeline
+The local model is used for exactly two bounded tasks:
 
-- **Preprocessing**: median imputation for numerical columns, most-frequent
-  imputation for binary/categorical columns, label-encoding for categoricals.
-- **Model**: XGBoost multi-class classifier (`multi:softprob`), trained on a
-  stratified 80/20 split with per-sample class-imbalance weighting.
-- **Metrics**: accuracy, macro precision/recall/F1, macro ROC-AUC (one-vs-rest),
-  full classification report and confusion matrix — all saved to
-  `models/metrics.json` and shown on the Model Performance page.
-- **SHAP**: `shap.TreeExplainer` computes per-prediction feature contributions
-  for the predicted class; top positive and negative contributors are
-  returned and charted.
-- **K-Means**: patients are clustered (6 clusters by default) on the same
-  feature set; each prediction is assigned to its nearest cluster with a
-  similarity score.
-- **Apriori**: association rules are mined over the binary symptom columns
-  (`mlxtend`); matching rules for a given patient's symptoms are surfaced
-  in the Results page.
+1. Extract structured facts from the free-text description.
+2. Explain the already-computed model output in plain language.
 
-### Qwen3's role (and limits)
+It is not used to generate disease predictions or probabilities.
 
-Qwen3 (via local Ollama) is used for exactly two prompts, both constrained to
-avoid diagnosis:
-1. **Extraction** — pull out symptoms/duration/measurements/context that are
-   *explicitly stated* in the "Describe the situation" text box. It is told
-   not to guess or invent values.
-2. **Explanation** — given the already-computed XGBoost predictions and SHAP
-   contributions, produce a plain-language explanation. It is told not to
-   generate new probabilities or diagnoses.
+## Health status in the app
 
-### Cross-Modal Consistency Check
+The sidebar badge is connected to the backend health endpoint, which checks Ollama directly. The badge will show:
 
-The text extracted by Qwen3 is compared against the corresponding CSV
-symptom values for the same patient row. Any mismatch (e.g. CSV `fever=0`
-but the description mentions a fever) is reported as a contradiction with
-the CSV value, the text value, and a plain-language message — the original
-CSV data is never modified.
-
-### Clinical Pattern Convergence Score (experimental, research-only)
-
-A transparent 0–100 score combining four 0–1 signals with fixed, disclosed
-weights:
-
-| Component            | Weight | Meaning                                            |
-|-----------------------|-------:|-----------------------------------------------------|
-| `xgb_confidence`      | 0.40   | XGBoost's predicted probability for the top disease |
-| `shap_alignment`      | 0.25   | Share of SHAP evidence pointing toward that disease |
-| `rule_evidence`       | 0.20   | How many Apriori rules match the patient's symptoms |
-| `cluster_similarity`  | 0.15   | How close the patient is to their K-Means cluster center |
-
-The score and every component are shown on the Results page. **It is not a
-medically validated diagnostic score** — it exists purely to make the
-underlying ML evidence easier to read at a glance.
+- Ollama Connected when the local Ollama server is reachable and the model is present
+- Ollama Offline when the service is unavailable
 
 ---
 
 ## Disclaimer
 
-This project is for research and educational purposes only. Predictions are
-statistical outputs from a machine-learning model trained on synthetic data
-and must never be used for real medical diagnosis or treatment decisions.
-Always consult a qualified healthcare professional.
+This project is intended for research and educational use only. Machine-learning outputs are not medical diagnoses and should never replace professional medical judgment. Always consult a qualified healthcare professional.

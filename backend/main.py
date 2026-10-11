@@ -24,7 +24,7 @@ from ml_utils import (
     match_association_rules,
     shap_explain,
 )
-from qwen_utils import cross_modal_consistency_check, explain_result, extract_from_text
+from qwen_utils import cross_modal_consistency_check, explain_result, extract_from_text, get_ollama_status
 
 app = FastAPI(title="AI Disease Prediction API (local/research only)")
 
@@ -71,7 +71,16 @@ def _require_artifacts():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "model_trained": _artifacts_ready(), "disclaimer": DISCLAIMER}
+    ollama = get_ollama_status()
+    return {
+        "status": "ok",
+        "model_trained": _artifacts_ready(),
+        "ollama_status": ollama["status"],
+        "ollama_available": ollama["available"],
+        "ollama_model_present": ollama["model_present"],
+        "model_name": ollama["model_name"],
+        "disclaimer": DISCLAIMER,
+    }
 
 
 # ---------------------------------------------------------------------------
